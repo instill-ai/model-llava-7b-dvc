@@ -1,8 +1,11 @@
 # pylint: skip-file
 import os
 import random
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-# os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+# TORCH_GPU_MEMORY_FRACTION = 0.95  # Target memory ~= 15G on 16G card
+TORCH_GPU_MEMORY_FRACTION = 0.38  # Target memory ~= 15G on 40G card
+TORCH_GPU_DEVICE_ID = 0
+os.environ["CUDA_VISIBLE_DEVICES"] = f"{TORCH_GPU_DEVICE_ID}"
+
 
 import traceback
 
@@ -17,6 +20,10 @@ import numpy as np
 import transformers
 from transformers import AutoTokenizer
 import torch
+
+torch.cuda.set_per_process_memory_fraction(
+    TORCH_GPU_MEMORY_FRACTION, 0  # it count of number of device instead of device index
+)
 
 # triton_python_backend_utils is available in every Triton Python model. You
 # need to use this module to create inference requests and responses. It also
@@ -35,10 +42,7 @@ from llava.constants import (
 )
 from llava.mm_utils import (
     process_images,
-    tokenizer_image_token,
-    get_model_name_from_path,
-    KeywordsStoppingCriteria,
-    load_image_from_base64
+    tokenizer_image_token
 )
 
 class TritonPythonModel:
@@ -144,19 +148,6 @@ class TritonPythonModel:
                    if torch.cuda.is_available():
                        torch.cuda.manual_seed_all(random_seed)
 
-                stop_words = ""
-                if pb_utils.get_input_tensor_by_name(request, "stop_words") is not None:
-                    stop_words = pb_utils.get_input_tensor_by_name(request, "stop_words").as_numpy()[0]
-                self.logger.log_info(f'[DEBUG] input `stop_words` type({type(stop_words)}): {stop_words}')
-                if len(stop_words) == 0:
-                    stop_words = None
-                elif stop_words.shape[0] > 1:
-                    # TODO: Check wether shoule we decode this words
-                    stop_words = [ word if isinstance(word, str) else word.decode("utf-8") for word in stop_words]
-                else:
-                    stop_words = [str(stop_words[0].decode("utf-8"))]
-                self.logger.log_info(f'[DEBUG] parsed input `stop_words` type({type(stop_words)}): {stop_words}')
-                
                 # Handle Conversation
                 # conv_mode = "llava_llama_2"
                 conv_mode = "llava_v1"
@@ -206,9 +197,31 @@ class TritonPythonModel:
                 vision_tower = vision_tower.to(device='cuda', dtype=torch.float16)
                 image_processor = vision_tower.image_processor
 
-                # image = None
-                # image = Image.open(io.BytesIO(base64.b64decode(prompt_image)))
-                image = Image.open(io.BytesIO(prompt_image))  # RGB
+                success_parsed_image = False
+                try:
+                    original_image = Image.open(
+                        io.BytesIO(prompt_image)
+                    )  # for instill vd3p
+                    success_parsed_image = True
+                except Exception as e:
+                    print(e)
+                    pass
+
+                if not success_parsed_image:
+                    try:
+                        original_image = Image.open(
+                            io.BytesIO(base64.b64decode(prompt_image))
+                        )  # for test script
+                        success_parsed_image = True
+                    except Exception as e:
+                        print(e)
+                        pass
+
+                if not success_parsed_image:
+                    raise ValueError("Unable to parsed image")
+                else:
+                    image = original_image
+
                 self.logger.log_info(f"np.array(image).shape: {np.array(image).shape}")
                 # self.logger.log_info(f"self.model.device: {self.model.device}")
                 image_tensor = process_images(
@@ -225,8 +238,6 @@ class TritonPythonModel:
                 conv.append_message(conv.roles[1], None)
 
                 target_prompt = conv.get_prompt()
-                self.logger.log_info('[DEBUG] target_prompt:\n>>>>>>>>>>>>>>>>>>>\n' + target_prompt)
-                self.logger.log_info("<<<<<<<<<<<<<<<<<<<")
                 input_ids = tokenizer_image_token(
                     target_prompt,
                     self.tokenizer,
@@ -234,26 +245,10 @@ class TritonPythonModel:
                     return_tensors='pt'
                 ).unsqueeze(0).cuda()
 
-                if stop_words is not None:
-                    # stopping_criteria = KeywordsStoppingCriteria(stop_words, self.tokenizer, input_ids)
-                    # extra_params['stopping_criteria'] = [stopping_criteria]
-                    self.logger.log_info(f"[DEBUG] stop_words: {stop_words}")
-                    self.logger.log_info("Skipping stopping_criteria")
-
                 # Inference
                 # https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig
                 # https://huggingface.co/docs/transformers/v4.30.1/en/main_classes/text_generation#transformers.GenerationConfig
                 
-                # PROBLEM FOUND ... input_id not being handled
-                # input_ids[input_ids == -200] = 0 # test idea of image token
-                self.logger.log_info(f"input_ids: {input_ids.shape}")
-                self.logger.log_info(f"{input_ids}")
-                self.logger.log_info(f"image_tensor: {image_tensor.shape}")
-                self.logger.log_info(f"{image_tensor}")
-                self.logger.log_info("Skipping stopping_criteria")
-                # image_tensor = image_tensor.unsqueeze(0).half().cuda()
-                self.logger.log_info(f"image_tensor: {image_tensor.shape}")
-                self.logger.log_info(f"{image_tensor}")
 
                 t0 = time.time() # calculate time cost in following function call
 
@@ -278,12 +273,6 @@ class TritonPythonModel:
 
                     if len(outputs) > 1:
                         break
-                self.logger.log_info(f'{type(outputs)}')
-                self.logger.log_info("[DEBUG] Prompt:")
-                self.logger.log_info(f"{prompt}")
-                self.logger.log_info("[DEBUG] outputs:")
-                self.logger.log_info(f"{outputs.encode('utf-8')}")
-                self.logger.log_info('-'*100)
 
                 text_outputs = [outputs, ]
                 triton_output_tensor = pb_utils.Tensor(

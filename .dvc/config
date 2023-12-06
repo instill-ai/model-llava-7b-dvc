@@ -2,4 +2,4 @@
     autostage = true
     remote = gs
 ['remote "gs"']
-    url = gs://public-europe-west2-c-artifacts/vdp/public-dvc-models/model-llava-7b/hf
+    url = gs://public-europe-west2-c-artifacts/vdp/public-dvc-models/model-llava-7b/hf-v2
