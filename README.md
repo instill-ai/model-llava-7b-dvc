@@ -15,6 +15,7 @@ Notes:
 
 - Disk Space Requirements: 11G
 - GPU Memory Requirements: 14G
+- That some parameters is prohibited by Llava such as `frequency_penalty`
 
 ```
 {
@@ -34,5 +35,3 @@ Notes:
     ]
 }
 ```
-
-Note That some parameters is prohibited by Llava such as `frequency_penalty`
