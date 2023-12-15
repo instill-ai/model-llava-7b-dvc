@@ -26,11 +26,6 @@ input [
     dims: [ 1 ]
   },
   {
-   name: "stop_words"
-   data_type: TYPE_STRING
-   dims: [ -1 ]
-  },
-  {
     name: "temperature"
     data_type: TYPE_FP32
     dims: [ 1 ]
