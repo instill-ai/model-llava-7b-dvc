@@ -133,7 +133,7 @@ class Llava:
         processed_prompt = (
             f"USER: <image>\n{task_visual_question_answering_input.prompt}\nASSISTANT:"
         )
-        raw_image = task_visual_question_answering_input.image
+        raw_image = task_visual_question_answering_input.prompt_image
         inputs = self.processor(processed_prompt, raw_image, return_tensors="pt").to(
             0, torch.float16
         )
