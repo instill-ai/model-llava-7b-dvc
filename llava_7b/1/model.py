@@ -3,8 +3,7 @@ import random
 
 import ray
 import torch
-import transformers
-from transformers import AutoTokenizer
+from transformers import AutoProcessor, LlavaForConditionalGeneration
 import numpy as np
 
 from instill.helpers.const import DataType, VisualQuestionAnsweringInput
@@ -29,21 +28,7 @@ ray.init(address=get_compose_ray_address(10001))
 # this import must come after `ray.init()`
 from ray import serve
 
-
-import traceback
-
-import io
-import time
 import json
-import base64
-from pathlib import Path
-from PIL import Image
-
-
-from llava.model.language_model.llava_llama import LlavaLlamaForCausalLM
-from llava.conversation import conv_templates, Conversation, SeparatorStyle
-from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN
-from llava.mm_utils import process_images, tokenizer_image_token
 
 
 @instill_deployment
@@ -51,20 +36,18 @@ class Llava:
     def __init__(self, model_path: str):
         # self.application_name = "_".join(model_path.split("/")[3:5])
         # self.deployement_name = model_path.split("/")[4]
-        self.tokenizer = AutoTokenizer.from_pretrained(
+        self.model = LlavaForConditionalGeneration.from_pretrained(
             model_path,
-            use_fast=False
-            # torch_dtype=torch.float16,
-            # low_cpu_mem_usage=True
-        )
-
-        # TODO: move to transformer pipeline
-        self.model = LlavaLlamaForCausalLM.from_pretrained(
-            model_path,
-            low_cpu_mem_usage=True,
-            device_map="auto",
             torch_dtype=torch.float16,
-        )
+            low_cpu_mem_usage=True,
+            # device_map="auto",
+            # use_flash_attention_2=True # should instill with `flask-attn`
+            # load_in_4bit=True # should instaill with `bitsandbytes`
+        ).to(
+            0
+        )  # ???
+
+        self.processor = AutoProcessor.from_pretrained(model_path)
 
     def ModelMetadata(self, req: ModelMetadataRequest) -> ModelMetadataResponse:
         resp = ModelMetadataResponse(
@@ -147,95 +130,18 @@ class Llava:
                     task_visual_question_answering_input.random_seed
                 )
 
-        # Preparing for the prompt
-        conv_mode = "llava_v1"
-        prompt_in_conversation = False
-        try:
-            parsed_conversation = json.loads(
-                task_visual_question_answering_input.prompt
-            )
-            # using fixed roles
-            roles = ["USER", "ASSISTANT"]
-            roles_lookup = {x: i for i, x in enumerate(roles)}
-            conv = None
-            for i, x in enumerate(parsed_conversation):
-                role = str(x["role"]).upper()
-                self.logger.log_info(f'[DEBUG] Message {i}: {role}: {x["content"]}')
-                if i == 0:
-                    if role == "SYSTEM":
-                        conv = Conversation(
-                            system=str(x["content"]),
-                            roles=("USER", "ASSISTANT"),
-                            version="llama_v2",
-                            messages=[],
-                            offset=0,
-                            sep_style=SeparatorStyle.LLAMA_2,
-                            sep="<s>",
-                            sep2="</s>",
-                        )
-                    else:
-                        conv = conv_templates[conv_mode].copy()
-                        conv.roles = tuple(roles)
-                        conv.append_message(
-                            conv.roles[roles_lookup[role]], x["content"]
-                        )
-                else:
-                    conv.append_message(conv.roles[roles_lookup[role]], x["content"])
-            prompt_in_conversation = True
-        except json.decoder.JSONDecodeError:
-            pass
-
-        if not prompt_in_conversation or conv is None:
-            conv = conv_templates[conv_mode].copy()
-
-        # Preparing for the image
-        vision_tower = self.model.get_vision_tower()
-        if not vision_tower.is_loaded:
-            vision_tower.load_model()
-        vision_tower = vision_tower.to(device="cuda", dtype=torch.float16)
-        image_processor = vision_tower.image_processor
-
-        image_tensor = process_images(
-            [task_visual_question_answering_input.image],
-            image_processor,
-            {"image_aspect_ratio": "pad"},
-        ).to(self.model.device, dtype=torch.float16)
-
-        # add image to prompt
-        inp = DEFAULT_IMAGE_TOKEN + "\n" + task_visual_question_answering_input.prompt
-        conv.append_message(conv.roles[0], inp)
-        conv.append_message(conv.roles[1], None)
-
-        target_prompt = conv.get_prompt()
-        input_ids = (
-            tokenizer_image_token(
-                target_prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt"
-            )
-            .unsqueeze(0)
-            .cuda()
+        processed_prompt = (
+            f"USER: <image>\n{task_visual_question_answering_input.prompt}\nASSISTANT:"
+        )
+        raw_image = task_visual_question_answering_input.image
+        inputs = self.processor(processed_prompt, raw_image, return_tensors="pt").to(
+            0, torch.float16
         )
 
-        if task_visual_question_answering_input.temperature <= 0:
-            task_visual_question_answering_input = 0.8
-
-        output_ids = self.model.generate(
-            input_ids,
-            images=image_tensor,
-            do_sample=True,
-            temperature=task_visual_question_answering_input.temperature,
-            top_k=task_visual_question_answering_input.top_k,
-            max_new_tokens=task_visual_question_answering_input.max_new_tokens,
-            use_cache=False
-            # **extra_params
-        )
-
-        # output_ids[output_ids == -200] = 0
-        outputs = self.tokenizer.decode(
-            output_ids[0, input_ids.shape[1] :], skip_special_tokens=True
-        ).strip()
+        output = self.model.generate(**inputs, max_new_tokens=200, do_sample=False)
 
         sequences = [
-            outputs,
+            self.processor.decode(output[0][2:], skip_special_tokens=True),
         ]
 
         task_visual_question_answering_output = (
@@ -257,7 +163,7 @@ class Llava:
         return resp
 
 
-deployable = InstillDeployable(Llava, model_weight_or_folder_name="llava-v1.5-7b")
+deployable = InstillDeployable(Llava, model_weight_or_folder_name="llava-1.5-7b-hf")
 
 # you can also have a fine-grained control of the cpu and gpu resources allocation
 deployable.update_num_cpus(4)
