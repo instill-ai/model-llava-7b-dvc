@@ -141,8 +141,14 @@ class Llava:
         output = self.model.generate(**inputs, max_new_tokens=200, do_sample=False)
 
         sequences = [
-            self.processor.decode(output[0][2:], skip_special_tokens=True),
+            {
+                "generated_text": self.processor.decode(
+                    output[0][2:], skip_special_tokens=True
+                )
+            }
         ]
+
+        print(sequences)
 
         task_visual_question_answering_output = (
             StandardTaskIO.parse_task_visual_question_answering_output(
