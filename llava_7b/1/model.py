@@ -405,7 +405,7 @@ class TritonPythonModel:
             if len(visual_question_answering_input.prompt_images) > 0:
                 # Currently only support 1 image
                 image_tensor = process_images(
-                    [visual_question_answering_input.prompt_images[[0]]],
+                    [visual_question_answering_input.prompt_images[0]],
                     image_processor,
                     {"image_aspect_ratio": "pad"},
                 ).to(self.model.device, dtype=torch.float16)
