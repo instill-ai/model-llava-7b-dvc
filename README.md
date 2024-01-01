@@ -22,14 +22,15 @@ Notes:
     "task_inputs": [
         {
             "visual_question_answering": {
-              "prompt": "What is unusual inside this image?",
-              "prompt_image_url": "https://artifacts.instill.tech/imgs/dog.jpg",
-              // "prompt_image_url": "https://storage.googleapis.com/public-europe-west2-c-artifacts/imgs/sample1.png",
-              "max_new_tokens": "300",
-              "temperature": "0.9",
-              "top_k": "30",
-              "random_seed": "42",
-              "extra_params": "{\"top_p\": 0.8}" 
+                "prompt": "How many dogs in the picture?",
+                "prompt_images": [
+                    { "prompt_image_url": "https://artifacts.instill.tech/imgs/dog.jpg" }
+                ],
+                "system_message": "You are not a human.",
+                "max_new_tokens": "500",
+                "temperature": "0.8",
+                "top_k": "10",
+                "seed": "42"
             }
         }
     ]

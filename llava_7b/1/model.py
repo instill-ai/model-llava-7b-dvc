@@ -9,8 +9,8 @@ from PIL import Image
 
 import random
 
-TORCH_GPU_MEMORY_FRACTION = 0.95  # Target memory ~= 15G on 16G card
-# TORCH_GPU_MEMORY_FRACTION = 0.38  # Target memory ~= 15G on 40G card
+# TORCH_GPU_MEMORY_FRACTION = 0.95  # Target memory ~= 15G on 16G card
+TORCH_GPU_MEMORY_FRACTION = 0.38  # Target memory ~= 15G on 40G card
 TORCH_GPU_DEVICE_ID = 0
 os.environ["CUDA_VISIBLE_DEVICES"] = f"{TORCH_GPU_DEVICE_ID}"
 
