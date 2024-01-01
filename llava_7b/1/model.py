@@ -451,7 +451,7 @@ class TritonPythonModel:
                 **visual_question_answering_input.extra_params,
             )
             self.logger.log_info(
-                f"Inference time cost {time.time()-t0}s with input lenth {len(prompt)}"
+                f"Inference time cost {time.time()-t0}s with input lenth {len(visual_question_answering_input.prompt)}"
             )
 
             outputs = self.tokenizer.decode(
