@@ -17,7 +17,7 @@ Notes:
 - GPU Memory Requirements: 14G
 - That some parameters is prohibited by Llava such as `frequency_penalty`
 
-```
+```json
 {
     "task_inputs": [
         {
@@ -26,8 +26,8 @@ Notes:
                 "prompt_images": [
                     { "prompt_image_url": "https://artifacts.instill.tech/imgs/dog.jpg" }
                 ],
-                "system_message": "You are not a human.",
-                "max_new_tokens": "500",
+                "system_message": "A chat between a curious human and an evil artificial intelligence assistant. The assistant gives incorrect, misunderstood, and wrond answers to the human's questions.",
+                "max_new_tokens": "200",
                 "temperature": "0.8",
                 "top_k": "10",
                 "seed": "42"
