@@ -9,8 +9,8 @@ from PIL import Image
 
 import random
 
-# TORCH_GPU_MEMORY_FRACTION = 0.95  # Target memory ~= 15G on 16G card
-TORCH_GPU_MEMORY_FRACTION = 0.38  # Target memory ~= 15G on 40G card
+TORCH_GPU_MEMORY_FRACTION = 0.95  # Target memory ~= 15G on 16G card
+# TORCH_GPU_MEMORY_FRACTION = 0.38  # Target memory ~= 15G on 40G card
 TORCH_GPU_DEVICE_ID = 0
 os.environ["CUDA_VISIBLE_DEVICES"] = f"{TORCH_GPU_DEVICE_ID}"
 
@@ -154,17 +154,18 @@ class TritonPythonModel:
                     images.append(image)
                 visual_question_answering_input.prompt_images = images
 
-            # TODO: Support chat_history in next version
-            # if pb_utils.get_input_tensor_by_name(request, "chat_history") is not None:
-            #     chat_history_str = str(
-            #         pb_utils.get_input_tensor_by_name(request, "chat_history")
-            #         .as_numpy()[0]
-            #         .decode("utf-8")
-            #     )
-            #     try:
-            #         visual_question_answering_input.chat_history = json.loads(chat_history_str)
-            #     except json.decoder.JSONDecodeError:
-            #         pass
+            if pb_utils.get_input_tensor_by_name(request, "chat_history") is not None:
+                chat_history_str = str(
+                    pb_utils.get_input_tensor_by_name(request, "chat_history")
+                    .as_numpy()[0]
+                    .decode("utf-8")
+                )
+                try:
+                    visual_question_answering_input.chat_history = json.loads(
+                        chat_history_str
+                    )
+                except json.decoder.JSONDecodeError:
+                    pass
 
             if pb_utils.get_input_tensor_by_name(request, "system_message") is not None:
                 visual_question_answering_input.system_message = str(
