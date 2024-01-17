@@ -375,9 +375,9 @@ class TritonPythonModel:
                     version="v1",
                     messages=prompt_conversation,
                     offset=0,
-                    sep_style=SeparatorStyle.LLAMA_2,
-                    sep="<s>",
-                    sep2="</s>",
+                    sep_style=SeparatorStyle.TWO,
+                    sep=" ",
+                    sep2="</s>"
                 )
                 # conv.append_message(conv.roles[0], visual_question_answering_input.prompt)
             else:
@@ -388,9 +388,9 @@ class TritonPythonModel:
                         version="v1",
                         messages=[],
                         offset=0,
-                        sep_style=SeparatorStyle.LLAMA_2,
-                        sep="<s>",
-                        sep2="</s>",
+                        sep_style=SeparatorStyle.TWO,
+                        sep=" ",
+                        sep2="</s>"
                     )
                 else:
                     conv = conv_templates[conv_mode].copy()
