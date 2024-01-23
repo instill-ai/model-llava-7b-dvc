@@ -327,7 +327,7 @@ class Llava:
             if default_system_message is None:
                 default_system_message = (
                     "A chat between a curious human and an artificial intelligence assistant. "
-                    "The assistant gives helpful, detailed, and polite answers to the human's questions.",
+                    "The assistant gives helpful, detailed, and polite answers to the human's questions."
                 )
 
             if COMBINED_CONSEQUENCE_PROMPTS:
@@ -386,7 +386,7 @@ class Llava:
             len(processed_prompt)
             - (len("<image>") * count_image_tag)
             - (len("</s>") * count_end_tag)
-            + 1
+            + 1 * (count_image_tag + count_end_tag)
         )
         print(
             f"----------------, length: {input_length}, (</s>:{count_end_tag}), (<image>:{count_image_tag}"
