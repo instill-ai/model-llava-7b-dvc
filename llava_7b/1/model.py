@@ -412,10 +412,10 @@ class Llava:
         print("Output No Clean ----")
         print(self.processor.decode(output[0], skip_special_tokens=True))
         print("Output Clean ----")
-        print(self.processor.decode(output[0][input_length:], skip_special_tokens=True))
+        print(self.processor.decode(output[0], skip_special_tokens=True)[input_length:])
         print("---")
         generated_text = (
-            self.processor.decode(output[0][input_length:], skip_special_tokens=True)
+            self.processor.decode(output[0], skip_special_tokens=True)[input_length:]
             .strip()
             .encode("utf-8")
         )
