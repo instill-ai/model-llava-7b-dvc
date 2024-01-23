@@ -379,7 +379,8 @@ class Llava:
         conv.append_message(conv.roles[1], None)
 
         processed_prompt = conv.get_prompt()
-        print("----------------")
+        input_length = len(processed_prompt) - len("<image>") + 1
+        print(f"----------------, length: {input_length}")
         print(f"[DEBUG] Conversation Prompt: \n{conv.get_prompt()}")
         print("----------------")
 
@@ -387,30 +388,31 @@ class Llava:
         raw_image = None
         if len(task_visual_question_answering_input.prompt_images) > 0:
             raw_image = task_visual_question_answering_input.prompt_images[0]
-            print("RAW_image -----")
-            print(raw_image)
-            print("RAW_image -----")
 
         inputs = self.processor(processed_prompt, raw_image, return_tensors="pt").to(
             0, torch.float16
         )
 
         # End of Process chat_history
-
         t0 = time.time()
-        output = self.model.generate(**inputs, max_new_tokens=200, do_sample=False)
+        output = self.model.generate(
+            **inputs,
+            max_new_tokens=task_visual_question_answering_input.max_new_tokens,
+            do_sample=True,
+            temperature=task_visual_question_answering_input.temperature,
+            top_k=task_visual_question_answering_input.top_k,
+            **task_visual_question_answering_input.extra_params,
+        )
         print(f"Inference time cost {time.time()-t0}s")
 
-        input_length = len(processed_prompt) - len("<image>") + 1
         max_output_len = 0
-
         text_outputs = []
         # Not iterate outputs
         # for seq in sequences:
         print("Output No Clean ----")
-        print(self.processor.decode(output[0][input_length:], skip_special_tokens=True))
-        print("Output Clean ----")
         print(self.processor.decode(output[0], skip_special_tokens=True))
+        print("Output Clean ----")
+        print(self.processor.decode(output[0][input_length:], skip_special_tokens=True))
         print("---")
         generated_text = (
             self.processor.decode(output[0][input_length:], skip_special_tokens=True)
