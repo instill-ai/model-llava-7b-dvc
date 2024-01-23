@@ -379,8 +379,18 @@ class Llava:
         conv.append_message(conv.roles[1], None)
 
         processed_prompt = conv.get_prompt()
-        input_length = len(processed_prompt) - len("<image>") + 1
-        print(f"----------------, length: {input_length}")
+        count_end_tag = processed_prompt.count("</s>")
+        count_image_tag = processed_prompt.count("<image>")
+
+        input_length = (
+            len(processed_prompt)
+            - (len("<image>") * count_image_tag)
+            - (len("</s>") * count_end_tag)
+            + 1
+        )
+        print(
+            f"----------------, length: {input_length}, (</s>:{count_end_tag}), (<image>:{count_image_tag}"
+        )
         print(f"[DEBUG] Conversation Prompt: \n{conv.get_prompt()}")
         print("----------------")
 
