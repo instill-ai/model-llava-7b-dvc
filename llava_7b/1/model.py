@@ -454,7 +454,7 @@ class Llava:
 
         outputs = self.tokenizer.decode(
             # output_ids[0, input_ids.shape[1] :], skip_special_tokens=True
-            output_ids[0, input_ids.shape[1] :],
+            output_ids[0, :],
             skip_special_tokens=True,
         ).strip()
 
