@@ -391,7 +391,7 @@ class Llava:
         image_tensor = process_images(
             [raw_image], image_processor, {"image_aspect_ratio": "pad"}
         ).to(self.model.device, dtype=torch.float16)
-        self.logger.log_info(f"image_tensor.shape: {image_tensor.shape}")
+        print(f"image_tensor.shape: {image_tensor.shape}")
 
         inp = (
             DEFAULT_IMAGE_TOKEN
