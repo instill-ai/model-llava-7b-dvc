@@ -57,8 +57,8 @@ class Llava:
 
         print(f"[DEBUG] self.tokenizer.pad_token: {self.tokenizer.pad_token}")
         print(f"[DEBUG] self.tokenizer.eos_token: {self.tokenizer.eos_token}")
-        print(f"[DEBUG] transformers version: {transformers.__version__}")
-        print(f"[DEBUG] torch version: {torch.__version__}")
+        # print(f"[DEBUG] transformers version: {transformers.__version__}")
+        # print(f"[DEBUG] torch version: {torch.__version__}")
 
         self.model = LlavaLlamaForCausalLM.from_pretrained(
             model_path,
