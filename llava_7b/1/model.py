@@ -192,189 +192,190 @@ class Llava:
         CHECK_FIRST_ROLE_IS_USER = False
         COMBINED_CONSEQUENCE_PROMPTS = True
         conv_mode = "llava_v1"
-        prompt_roles = ["USER", "ASSISTANT", "SYSTEM"]
-        conversation_prompt = task_visual_question_answering_input.prompt
-        if (
-            task_visual_question_answering_input.chat_history is not None
-            and len(task_visual_question_answering_input.chat_history) > 0
-        ):
-            prompt_conversation = []
-            default_system_message = task_visual_question_answering_input.system_message
-            for chat_entity in task_visual_question_answering_input.chat_history:
-                role = str(chat_entity["role"]).upper()
-                chat_history_messages = None
-                chat_hisotry_images = []
+        # prompt_roles = ["USER", "ASSISTANT", "SYSTEM"]
+        # conversation_prompt = task_visual_question_answering_input.prompt
+        # if (
+        #     task_visual_question_answering_input.chat_history is not None
+        #     and len(task_visual_question_answering_input.chat_history) > 0
+        # ):
+        #     prompt_conversation = []
+        #     default_system_message = task_visual_question_answering_input.system_message
+        #     for chat_entity in task_visual_question_answering_input.chat_history:
+        #         role = str(chat_entity["role"]).upper()
+        #         chat_history_messages = None
+        #         chat_hisotry_images = []
 
-                for chat_entity_message in chat_entity["content"]:
-                    if chat_entity_message["type"] == "text":
-                        if chat_history_messages is not None:
-                            raise ValueError(
-                                "Multiple text message detected"
-                                " in a single chat history entity"
-                            )
-                        # This structure comes from google protobuf `One of` Syntax, where an additional layer in Content
-                        # [{'role': 'system', 'content': [{'type': 'text', 'Content': {'Text': "What's in this image?"}}]}]
-                        if "Content" in chat_entity_message:
-                            chat_history_messages = chat_entity_message["Content"][
-                                "Text"
-                            ]
-                        elif "Text" in chat_entity_message:
-                            chat_history_messages = chat_entity_message["Text"]
-                        elif "text" in chat_entity_message:
-                            chat_history_messages = chat_entity_message["text"]
-                        else:
-                            raise ValueError(
-                                f"Unknown structure of chat_hisoty: {task_visual_question_answering_input.chat_history}"
-                            )
-                    elif chat_entity_message["type"] == "image_url":
-                        # TODO: imeplement image parser in model_backedn
-                        # This field is expected to be base64 encoded string
-                        IMAGE_BASE64_PREFIX = (
-                            "data:image/jpeg;base64,"  # "{base64_image}"
-                        )
-                        # This structure comes from google protobuf `One of` Syntax, where an additional layer in Content
-                        # TODO: Handling this field
-                        if (
-                            "Content" not in chat_entity_message
-                            or "ImageUrl" not in chat_entity_message["Content"]
-                        ):
-                            print(
-                                f"Unsupport chat_entity_message format: {chat_entity_message}"
-                            )
-                            continue
+        #         for chat_entity_message in chat_entity["content"]:
+        #             if chat_entity_message["type"] == "text":
+        #                 if chat_history_messages is not None:
+        #                     raise ValueError(
+        #                         "Multiple text message detected"
+        #                         " in a single chat history entity"
+        #                     )
+        #                 # This structure comes from google protobuf `One of` Syntax, where an additional layer in Content
+        #                 # [{'role': 'system', 'content': [{'type': 'text', 'Content': {'Text': "What's in this image?"}}]}]
+        #                 if "Content" in chat_entity_message:
+        #                     chat_history_messages = chat_entity_message["Content"][
+        #                         "Text"
+        #                     ]
+        #                 elif "Text" in chat_entity_message:
+        #                     chat_history_messages = chat_entity_message["Text"]
+        #                 elif "text" in chat_entity_message:
+        #                     chat_history_messages = chat_entity_message["text"]
+        #                 else:
+        #                     raise ValueError(
+        #                         f"Unknown structure of chat_hisoty: {task_visual_question_answering_input.chat_history}"
+        #                     )
+        #             elif chat_entity_message["type"] == "image_url":
+        #                 # TODO: imeplement image parser in model_backedn
+        #                 # This field is expected to be base64 encoded string
+        #                 IMAGE_BASE64_PREFIX = (
+        #                     "data:image/jpeg;base64,"  # "{base64_image}"
+        #                 )
+        #                 # This structure comes from google protobuf `One of` Syntax, where an additional layer in Content
+        #                 # TODO: Handling this field
+        #                 if (
+        #                     "Content" not in chat_entity_message
+        #                     or "ImageUrl" not in chat_entity_message["Content"]
+        #                 ):
+        #                     print(
+        #                         f"Unsupport chat_entity_message format: {chat_entity_message}"
+        #                     )
+        #                     continue
 
-                        if len(chat_entity_message["Content"]["ImageUrl"]) == 0:
-                            continue
-                        elif (
-                            "promptImageUrl"
-                            in chat_entity_message["Content"]["ImageUrl"]["image_url"][
-                                "Type"
-                            ]
-                        ):
-                            image = Image.open(
-                                io.BytesIO(
-                                    requests.get(
-                                        chat_entity_message["Content"]["ImageUrl"][
-                                            "image_url"
-                                        ]["Type"]["promptImageUrl"]
-                                    ).content
-                                )
-                            )
-                            chat_hisotry_images.append(image)
-                        elif (
-                            "promptImageBase64"
-                            in chat_entity_message["Content"]["ImageUrl"]["image_url"][
-                                "Type"
-                            ]
-                        ):
-                            image_base64_str = chat_entity_message["Content"][
-                                "ImageUrl"
-                            ]["image_url"]["Type"]["promptImageBase64"]
-                            if image_base64_str.startswith(IMAGE_BASE64_PREFIX):
-                                image_base64_str = image_base64_str[
-                                    IMAGE_BASE64_PREFIX:
-                                ]
-                            # expected content in url with base64 format:
-                            # f"data:image/jpeg;base64,{base64_image}"
-                            pil_img = Image.open(
-                                io.BytesIO(base64.b64decode(image_base64_str))
-                            )
-                            image = np.array(pil_img)
-                            if len(image.shape) == 2:  # gray image
-                                raise ValueError(
-                                    f"The chat history image shape with {image.shape} is "
-                                    f"not in acceptable"
-                                )
-                            chat_hisotry_images.append(image)
-                    else:
-                        raise ValueError(
-                            "Unsupported chat_hisotry message type"
-                            ", expected eithjer 'text' or 'image_url'"
-                            f" but get {chat_entity_message['type']}"
-                        )
+        #                 if len(chat_entity_message["Content"]["ImageUrl"]) == 0:
+        #                     continue
+        #                 elif (
+        #                     "promptImageUrl"
+        #                     in chat_entity_message["Content"]["ImageUrl"]["image_url"][
+        #                         "Type"
+        #                     ]
+        #                 ):
+        #                     image = Image.open(
+        #                         io.BytesIO(
+        #                             requests.get(
+        #                                 chat_entity_message["Content"]["ImageUrl"][
+        #                                     "image_url"
+        #                                 ]["Type"]["promptImageUrl"]
+        #                             ).content
+        #                         )
+        #                     )
+        #                     chat_hisotry_images.append(image)
+        #                 elif (
+        #                     "promptImageBase64"
+        #                     in chat_entity_message["Content"]["ImageUrl"]["image_url"][
+        #                         "Type"
+        #                     ]
+        #                 ):
+        #                     image_base64_str = chat_entity_message["Content"][
+        #                         "ImageUrl"
+        #                     ]["image_url"]["Type"]["promptImageBase64"]
+        #                     if image_base64_str.startswith(IMAGE_BASE64_PREFIX):
+        #                         image_base64_str = image_base64_str[
+        #                             IMAGE_BASE64_PREFIX:
+        #                         ]
+        #                     # expected content in url with base64 format:
+        #                     # f"data:image/jpeg;base64,{base64_image}"
+        #                     pil_img = Image.open(
+        #                         io.BytesIO(base64.b64decode(image_base64_str))
+        #                     )
+        #                     image = np.array(pil_img)
+        #                     if len(image.shape) == 2:  # gray image
+        #                         raise ValueError(
+        #                             f"The chat history image shape with {image.shape} is "
+        #                             f"not in acceptable"
+        #                         )
+        #                     chat_hisotry_images.append(image)
+        #             else:
+        #                 raise ValueError(
+        #                     "Unsupported chat_hisotry message type"
+        #                     ", expected eithjer 'text' or 'image_url'"
+        #                     f" but get {chat_entity_message['type']}"
+        #                 )
 
-                # TODO: support image message in chat history
-                # self.messages.append([role, message])
-                if role not in prompt_roles:
-                    raise ValueError(
-                        f"Role `{chat_entity['role']}` is not in supported"
-                        f"role list ({','.join(prompt_roles)})"
-                    )
-                elif (
-                    role == prompt_roles[-1]
-                    and default_system_message is not None
-                    and len(default_system_message) > 0
-                ):
-                    raise ValueError(
-                        "it's ambiguious to set `system_message` and "
-                        f"using role `{prompt_roles[-1]}` simultaneously"
-                    )
-                elif chat_history_messages is None:
-                    raise ValueError(
-                        f"No message found in chat_history. {chat_entity_message}"
-                    )
-                if role == prompt_roles[-1]:
-                    default_system_message = chat_history_messages
-                else:
-                    if CHECK_FIRST_ROLE_IS_USER:
-                        if len(prompt_conversation) == 0 and role != prompt_roles[0]:
-                            prompt_conversation.append([prompt_roles[0], " "])
-                    if COMBINED_CONSEQUENCE_PROMPTS:
-                        if (
-                            len(prompt_conversation) > 0
-                            and prompt_conversation[-1][0] == role
-                        ):
-                            laset_conversation = prompt_conversation.pop()
-                            chat_history_messages = (
-                                f"{laset_conversation[1]}\n\n{chat_history_messages}"
-                            )
-                    prompt_conversation.append([role, chat_history_messages])
+        #         # TODO: support image message in chat history
+        #         # self.messages.append([role, message])
+        #         if role not in prompt_roles:
+        #             raise ValueError(
+        #                 f"Role `{chat_entity['role']}` is not in supported"
+        #                 f"role list ({','.join(prompt_roles)})"
+        #             )
+        #         elif (
+        #             role == prompt_roles[-1]
+        #             and default_system_message is not None
+        #             and len(default_system_message) > 0
+        #         ):
+        #             raise ValueError(
+        #                 "it's ambiguious to set `system_message` and "
+        #                 f"using role `{prompt_roles[-1]}` simultaneously"
+        #             )
+        #         elif chat_history_messages is None:
+        #             raise ValueError(
+        #                 f"No message found in chat_history. {chat_entity_message}"
+        #             )
+        #         if role == prompt_roles[-1]:
+        #             default_system_message = chat_history_messages
+        #         else:
+        #             if CHECK_FIRST_ROLE_IS_USER:
+        #                 if len(prompt_conversation) == 0 and role != prompt_roles[0]:
+        #                     prompt_conversation.append([prompt_roles[0], " "])
+        #             if COMBINED_CONSEQUENCE_PROMPTS:
+        #                 if (
+        #                     len(prompt_conversation) > 0
+        #                     and prompt_conversation[-1][0] == role
+        #                 ):
+        #                     laset_conversation = prompt_conversation.pop()
+        #                     chat_history_messages = (
+        #                         f"{laset_conversation[1]}\n\n{chat_history_messages}"
+        #                     )
+        #             prompt_conversation.append([role, chat_history_messages])
 
-            if default_system_message is None:
-                default_system_message = (
-                    "A chat between a curious human and an artificial intelligence assistant. "
-                    "The assistant gives helpful, detailed, and polite answers to the human's questions."
-                )
+        #     if default_system_message is None:
+        #         default_system_message = (
+        #             "A chat between a curious human and an artificial intelligence assistant. "
+        #             "The assistant gives helpful, detailed, and polite answers to the human's questions."
+        #         )
 
-            if COMBINED_CONSEQUENCE_PROMPTS:
-                if (
-                    len(prompt_conversation) > 0
-                    and prompt_conversation[-1][0] == prompt_roles[0]
-                ):
-                    laset_conversation = prompt_conversation.pop()
-                    conversation_prompt = (
-                        f"{laset_conversation[1]}\n\n{conversation_prompt}"
-                    )
+        #     if COMBINED_CONSEQUENCE_PROMPTS:
+        #         if (
+        #             len(prompt_conversation) > 0
+        #             and prompt_conversation[-1][0] == prompt_roles[0]
+        #         ):
+        #             laset_conversation = prompt_conversation.pop()
+        #             conversation_prompt = (
+        #                 f"{laset_conversation[1]}\n\n{conversation_prompt}"
+        #             )
 
-            conv = Conversation(
-                system=default_system_message,
-                roles=tuple(prompt_roles[:-1]),
-                version="v1",
-                messages=prompt_conversation,
-                offset=0,
-                sep_style=SeparatorStyle.TWO,
-                sep=" ",
-                sep2="</s>",
-            )
-            # for llava model, handle first prompt later
-            # conv.append_message(conv.roles[0], conversation_prompt)
-        else:
-            if task_visual_question_answering_input.system_message is not None:
-                conv = Conversation(
-                    system=task_visual_question_answering_input.system_message,
-                    roles=tuple(prompt_roles[:-1]),
-                    version="v1",
-                    messages=[],
-                    offset=0,
-                    sep_style=SeparatorStyle.TWO,
-                    sep=" ",
-                    sep2="</s>",
-                )
-            else:
-                conv = conv_templates[conv_mode].copy()
-            # for llava model, handle first prompt later
-            # conv.append_message(conv.roles[0], task_visual_question_answering_input.prompt)
+        #     conv = Conversation(
+        #         system=default_system_message,
+        #         roles=tuple(prompt_roles[:-1]),
+        #         version="v1",
+        #         messages=prompt_conversation,
+        #         offset=0,
+        #         sep_style=SeparatorStyle.TWO,
+        #         sep=" ",
+        #         sep2="</s>",
+        #     )
+        #     # for llava model, handle first prompt later
+        #     # conv.append_message(conv.roles[0], conversation_prompt)
+        # else:
+        #     if task_visual_question_answering_input.system_message is not None:
+        #         conv = Conversation(
+        #             system=task_visual_question_answering_input.system_message,
+        #             roles=tuple(prompt_roles[:-1]),
+        #             version="v1",
+        #             messages=[],
+        #             offset=0,
+        #             sep_style=SeparatorStyle.TWO,
+        #             sep=" ",
+        #             sep2="</s>",
+        #         )
+        #     else:
+        #         conv = conv_templates[conv_mode].copy()
+        #     # for llava model, handle first prompt later
+        #     # conv.append_message(conv.roles[0], task_visual_question_answering_input.prompt)
 
+        conv = conv_templates[conv_mode].copy()
         # Handle Image
         vision_tower = self.model.get_vision_tower()
         if not vision_tower.is_loaded:
@@ -443,6 +444,10 @@ class Llava:
         #     **task_visual_question_answering_input.extra_params,
         # )
         print(f"Inference time cost {time.time()-t0}s")
+
+        print("---output_ids:")
+        print(output_ids)
+        print("---")
 
         outputs = self.tokenizer.decode(
             output_ids[0, input_ids.shape[1] :], skip_special_tokens=True
