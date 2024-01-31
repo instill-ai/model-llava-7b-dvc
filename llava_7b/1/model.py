@@ -393,11 +393,7 @@ class Llava:
         ).to(self.model.device, dtype=torch.float16)
         print(f"image_tensor.shape: {image_tensor.shape}")
 
-        inp = (
-            DEFAULT_IMAGE_TOKEN
-            + "\n"
-            + task_visual_question_answering_input.prompt_images
-        )
+        inp = DEFAULT_IMAGE_TOKEN + "\n" + task_visual_question_answering_input.prompt
         conv.append_message(conv.roles[0], inp)
         conv.append_message(conv.roles[1], None)
 
