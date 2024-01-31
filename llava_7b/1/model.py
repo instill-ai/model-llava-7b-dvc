@@ -454,7 +454,7 @@ class Llava:
 
 
 deployable = InstillDeployable(
-    Llava, model_weight_or_folder_name="llava-1.5-7b-hf/", use_gpu=True
+    Llava, model_weight_or_folder_name="llava-v1.6-vicuna-7b/", use_gpu=True
 )
 
 # # Optional
