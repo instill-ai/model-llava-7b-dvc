@@ -191,7 +191,7 @@ class Llava:
         # Preprocessing
         CHECK_FIRST_ROLE_IS_USER = False
         COMBINED_CONSEQUENCE_PROMPTS = True
-        conv_mode = "llava_v1"
+        conv_mode = "vicuna_v1"
         # prompt_roles = ["USER", "ASSISTANT", "SYSTEM"]
         # conversation_prompt = task_visual_question_answering_input.prompt
         # if (
