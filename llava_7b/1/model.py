@@ -422,6 +422,9 @@ class Llava:
             .cuda()
         )
 
+        print("---------------- input_ids")
+        print(input_ids)
+        print("----------------")
         # End of Process chat_history
         t0 = time.time()
         output_ids = self.model.generate(
