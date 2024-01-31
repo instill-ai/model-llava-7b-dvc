@@ -12,8 +12,6 @@ import random
 import base64
 import ray
 import torch
-import transformers
-from transformers import AutoProcessor, LlavaForConditionalGeneration
 from PIL import Image
 
 import numpy as np
@@ -32,8 +30,12 @@ from instill.helpers import (
     Metadata,
 )
 
-
-from conversation import Conversation, conv_templates, SeparatorStyle
+import transformers
+from transformers import AutoTokenizer
+from llava.model.language_model.llava_llama import LlavaLlamaForCausalLM
+from llava.conversation import conv_templates, Conversation, SeparatorStyle
+from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN
+from llava.mm_utils import process_images, tokenizer_image_token
 
 
 @instill_deployment
@@ -51,16 +53,20 @@ class Llava:
         print(f"torch.cuda.device(0) : {torch.cuda.device(0)}")
         print(f"torch.cuda.get_device_name(0) : {torch.cuda.get_device_name(0)}")
 
-        self.model = LlavaForConditionalGeneration.from_pretrained(
-            model_path,
-            torch_dtype=torch.float16,
-            low_cpu_mem_usage=True,
-            # device_map="auto",
-            # use_flash_attention_2=True # should instill with `flask-attn`
-            # load_in_4bit=True # should instaill with `bitsandbytes`
-        ).to(0)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
 
-        self.processor = AutoProcessor.from_pretrained(model_path)
+        print(f"[DEBUG] self.tokenizer.pad_token: {self.tokenizer.pad_token}")
+        print(f"[DEBUG] self.tokenizer.eos_token: {self.tokenizer.eos_token}")
+        print(f"[DEBUG] transformers version: {transformers.__version__}")
+        print(f"[DEBUG] torch version: {torch.__version__}")
+
+        self.model = LlavaLlamaForCausalLM.from_pretrained(
+            model_path,
+            low_cpu_mem_usage=True,
+            device_map="auto",  # "cpu"
+            # max_memory={0: "12GB", 1: "12GB", 2: "12GB", 3: "12GB"},
+            torch_dtype=torch.float16,
+        )
 
     def ModelMetadata(self, req):
         resp = construct_metadata_response(
@@ -369,13 +375,30 @@ class Llava:
             # for llava model, handle first prompt later
             # conv.append_message(conv.roles[0], task_visual_question_answering_input.prompt)
 
-        # Llava Prompt be like:
-        # f"USER: <image>\n{task_visual_question_answering_input.prompt}\nASSISTANT:"
+        # Handle Image
+        vision_tower = self.model.get_vision_tower()
+        if not vision_tower.is_loaded:
+            vision_tower.load_model()
+        vision_tower = vision_tower.to(device="cuda", dtype=torch.float16)
+        image_processor = vision_tower.image_processor
+
+        raw_image = None
         if len(task_visual_question_answering_input.prompt_images) > 0:
-            conv.append_message(conv.roles[0], f"<image>\n{conversation_prompt}")
+            raw_image = task_visual_question_answering_input.prompt_images[0]
         else:
-            self.logger.log_info(f"[WARNGING], NO IMAGE received")
-            conv.append_message(conv.roles[0], conversation_prompt)
+            print("NOOOOOOO no image")
+
+        image_tensor = process_images(
+            [raw_image], image_processor, {"image_aspect_ratio": "pad"}
+        ).to(self.model.device, dtype=torch.float16)
+        self.logger.log_info(f"image_tensor.shape: {image_tensor.shape}")
+
+        inp = (
+            DEFAULT_IMAGE_TOKEN
+            + "\n"
+            + task_visual_question_answering_input.prompt_images
+        )
+        conv.append_message(conv.roles[0], inp)
         conv.append_message(conv.roles[1], None)
 
         processed_prompt = conv.get_prompt()
@@ -394,41 +417,54 @@ class Llava:
         print(f"[DEBUG] Conversation Prompt: \n{conv.get_prompt()}")
         print("----------------")
 
-        # Handle Images
-        raw_image = None
-        if len(task_visual_question_answering_input.prompt_images) > 0:
-            raw_image = task_visual_question_answering_input.prompt_images[0]
-
-        inputs = self.processor(processed_prompt, raw_image, return_tensors="pt").to(
-            0, torch.float16
+        input_ids = (
+            tokenizer_image_token(
+                processed_prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt"
+            )
+            .unsqueeze(0)
+            .cuda()
         )
 
         # End of Process chat_history
         t0 = time.time()
-        output = self.model.generate(
-            **inputs,
-            max_new_tokens=task_visual_question_answering_input.max_new_tokens,
+        output_ids = self.model.generate(
+            input_ids,
+            images=image_tensor,
             do_sample=True,
             temperature=task_visual_question_answering_input.temperature,
             top_k=task_visual_question_answering_input.top_k,
+            max_new_tokens=task_visual_question_answering_input.max_new_tokens,
+            use_cache=False,
             **task_visual_question_answering_input.extra_params,
         )
+
+        # output = self.model.generate(
+        #     **inputs,
+        #     max_new_tokens=task_visual_question_answering_input.max_new_tokens,
+        #     do_sample=True,
+        #     temperature=task_visual_question_answering_input.temperature,
+        #     top_k=task_visual_question_answering_input.top_k,
+        #     **task_visual_question_answering_input.extra_params,
+        # )
         print(f"Inference time cost {time.time()-t0}s")
+
+        outputs = self.tokenizer.decode(
+            output_ids[0, input_ids.shape[1] :], skip_special_tokens=True
+        ).strip()
 
         max_output_len = 0
         text_outputs = []
         # Not iterate outputs
         # for seq in sequences:
-        print("Output No Clean ----")
-        print(self.processor.decode(output[0], skip_special_tokens=True))
-        print("Output Clean ----")
-        print(self.processor.decode(output[0], skip_special_tokens=True)[input_length:])
+        # print("Output No Clean ----")
+        # print(self.processor.decode(output[0], skip_special_tokens=True))
+        # print("Output Clean ----")
+        # print(self.processor.decode(output[0], skip_special_tokens=True)[input_length:])
+        print("---outputs:")
+        print(outputs)
         print("---")
-        generated_text = (
-            self.processor.decode(output[0], skip_special_tokens=True)[input_length:]
-            .strip()
-            .encode("utf-8")
-        )
+
+        generated_text = outputs.strip().encode("utf-8")
         text_outputs.append(generated_text)
         max_output_len = max(max_output_len, len(generated_text))
         # --
