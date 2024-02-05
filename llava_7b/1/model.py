@@ -1,8 +1,8 @@
 # pylint: skip-file
 import os
 
-TORCH_GPU_DEVICE_ID = 0
-os.environ["CUDA_VISIBLE_DEVICES"] = f"{TORCH_GPU_DEVICE_ID}"
+# TORCH_GPU_DEVICE_ID = 0
+os.environ["CUDA_VISIBLE_DEVICES"] = f"0,1,2,3"
 
 
 import io
@@ -192,7 +192,7 @@ class Llava:
         # Preprocessing
         CHECK_FIRST_ROLE_IS_USER = False
         COMBINED_CONSEQUENCE_PROMPTS = True
-        conv_mode = "vicuna_v1"
+        conv_mode = "chatml_direct"
         # prompt_roles = ["USER", "ASSISTANT", "SYSTEM"]
         # conversation_prompt = task_visual_question_answering_input.prompt
         # if (
@@ -497,7 +497,7 @@ class Llava:
 
 
 deployable = InstillDeployable(
-    Llava, model_weight_or_folder_name="llava-v1.6-vicuna-7b/", use_gpu=True
+    Llava, model_weight_or_folder_name="llava-v1.6-34b/", use_gpu=True
 )
 
 # # Optional
