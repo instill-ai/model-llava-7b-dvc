@@ -65,7 +65,8 @@ class Llava:
             low_cpu_mem_usage=True,
             device_map="auto",  # "cpu"
             # max_memory={0: "12GB", 1: "12GB", 2: "12GB", 3: "12GB"},
-            torch_dtype=torch.float16,
+            # torch_dtype=torch.float16,
+            load_in_8bit=True,
         )
 
     def ModelMetadata(self, req):
