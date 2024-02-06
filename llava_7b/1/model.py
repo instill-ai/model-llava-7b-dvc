@@ -499,6 +499,7 @@ class Llava:
 deployable = InstillDeployable(
     Llava, model_weight_or_folder_name="llava-v1.6-34b/", use_gpu=True
 )
+deployable._update_num_gpus(4)
 
 # # Optional
 # deployable.update_max_replicas(2)
