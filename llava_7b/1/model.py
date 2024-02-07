@@ -2,7 +2,7 @@
 import os
 
 # TORCH_GPU_DEVICE_ID = 0
-os.environ["CUDA_VISIBLE_DEVICES"] = f"0,1,2,3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
 
 
 import io
@@ -49,6 +49,13 @@ class Llava:
 
         print(f"torch.cuda.is_available() : {torch.cuda.is_available()}")
         print(f"torch.cuda.device_count() : {torch.cuda.device_count()}")
+        available_gpus = [
+            torch.cuda.device(i) for i in range(torch.cuda.device_count())
+        ]
+        print("available_gpus:", available_gpus)
+        for i in range(torch.cuda.device_count()):
+            print(torch.cuda.get_device_properties(i).name)
+
         print(f"torch.cuda.current_device() : {torch.cuda.current_device()}")
         print(f"torch.cuda.device(0) : {torch.cuda.device(0)}")
         print(f"torch.cuda.get_device_name(0) : {torch.cuda.get_device_name(0)}")
