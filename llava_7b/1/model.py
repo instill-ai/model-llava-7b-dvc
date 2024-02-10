@@ -503,10 +503,18 @@ class Llava:
         )
 
 
-deployable = InstillDeployable(
+class ModifiedInstillDeployable(InstillDeployable):
+    def _update_num_gpus(self, num_gpus: float):
+        if self._deployment.ray_actor_options is not None:
+            self._deployment.ray_actor_options.update(
+                {"num_gpus": 4}
+            )  # Test: Forcing GPU to be 4
+
+
+deployable = ModifiedInstillDeployable(
     Llava, model_weight_or_folder_name="llava-v1.6-34b/", use_gpu=True
 )
-deployable._update_num_gpus(4)
+# deployable._update_num_gpus(4)
 
 # # Optional
 # deployable.update_max_replicas(2)
