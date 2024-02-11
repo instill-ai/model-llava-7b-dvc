@@ -18,12 +18,7 @@ from functools import partial
 from llava.constants import WORKER_HEART_BEAT_INTERVAL
 from llava.utils import build_logger, server_error_msg, pretty_print_semaphore
 from llava.model.builder import load_pretrained_model
-from llava.mm_utils import (
-    process_images,
-    load_image_from_base64,
-    tokenizer_image_token,
-    KeywordsStoppingCriteria,
-)
+from llava.mm_utils import process_images, load_image_from_base64, tokenizer_image_token
 from llava.constants import (
     IMAGE_TOKEN_INDEX,
     DEFAULT_IMAGE_TOKEN,
@@ -62,6 +57,7 @@ class ModelWorker:
         load_8bit,
         load_4bit,
         device,
+        use_flash_attn=False,
     ):
         self.controller_addr = controller_addr
         self.worker_addr = worker_addr
@@ -91,13 +87,14 @@ class ModelWorker:
             load_8bit,
             load_4bit,
             device=self.device,
+            use_flash_attn=use_flash_attn,
         )
         self.is_multimodal = "llava" in self.model_name.lower()
 
         if not no_register:
             self.register_to_controller()
             self.heart_beat_thread = threading.Thread(
-                target=heart_beat_worker, args=(self,)
+                target=heart_beat_worker, args=(self,), daemon=True
             )
             self.heart_beat_thread.start()
 
@@ -226,7 +223,7 @@ class ModelWorker:
             .to(self.device)
         )
         keywords = [stop_str]
-        stopping_criteria = KeywordsStoppingCriteria(keywords, tokenizer, input_ids)
+        # stopping_criteria = KeywordsStoppingCriteria(keywords, tokenizer, input_ids)
         streamer = TextIteratorStreamer(
             tokenizer, skip_prompt=True, skip_special_tokens=True, timeout=15
         )
@@ -254,7 +251,6 @@ class ModelWorker:
                 top_p=top_p,
                 max_new_tokens=max_new_tokens,
                 streamer=streamer,
-                stopping_criteria=[stopping_criteria],
                 use_cache=True,
                 **image_args,
             ),
@@ -349,6 +345,7 @@ if __name__ == "__main__":
     parser.add_argument("--no-register", action="store_true")
     parser.add_argument("--load-8bit", action="store_true")
     parser.add_argument("--load-4bit", action="store_true")
+    parser.add_argument("--use-flash-attn", action="store_true")
     args = parser.parse_args()
     logger.info(f"args: {args}")
 
@@ -368,5 +365,6 @@ if __name__ == "__main__":
         args.load_8bit,
         args.load_4bit,
         args.device,
+        use_flash_attn=args.use_flash_attn,
     )
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")

@@ -14,7 +14,6 @@ from llava.mm_utils import (
     process_images,
     tokenizer_image_token,
     get_model_name_from_path,
-    KeywordsStoppingCriteria,
 )
 
 from PIL import Image
@@ -50,6 +49,10 @@ def main(args):
 
     if "llama-2" in model_name.lower():
         conv_mode = "llava_llama_2"
+    elif "mistral" in model_name.lower():
+        conv_mode = "mistral_instruct"
+    elif "v1.6-34b" in model_name.lower():
+        conv_mode = "chatml_direct"
     elif "v1" in model_name.lower():
         conv_mode = "llava_v1"
     elif "mpt" in model_name.lower():
@@ -73,6 +76,7 @@ def main(args):
         roles = conv.roles
 
     image = load_image(args.image_file)
+    image_size = image.size
     # Similar operation in model_worker.py
     image_tensor = process_images([image], image_processor, model.config)
     if type(image_tensor) is list:
@@ -122,22 +126,21 @@ def main(args):
         )
         stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
         keywords = [stop_str]
-        stopping_criteria = KeywordsStoppingCriteria(keywords, tokenizer, input_ids)
         streamer = TextStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
 
         with torch.inference_mode():
             output_ids = model.generate(
                 input_ids,
                 images=image_tensor,
+                image_sizes=[image_size],
                 do_sample=True if args.temperature > 0 else False,
                 temperature=args.temperature,
                 max_new_tokens=args.max_new_tokens,
                 streamer=streamer,
                 use_cache=True,
-                stopping_criteria=[stopping_criteria],
             )
 
-        outputs = tokenizer.decode(output_ids[0, input_ids.shape[1] :]).strip()
+        outputs = tokenizer.decode(output_ids[0]).strip()
         conv.messages[-1][-1] = outputs
 
         if args.debug:
