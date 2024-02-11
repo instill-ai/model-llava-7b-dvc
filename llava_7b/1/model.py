@@ -2,7 +2,7 @@
 import os
 
 # TORCH_GPU_DEVICE_ID = 0
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
 
 
 import io
@@ -388,7 +388,13 @@ class Llava:
         vision_tower = self.model.get_vision_tower()
         if not vision_tower.is_loaded:
             vision_tower.load_model()
-        vision_tower = vision_tower.to(device="cuda", dtype=torch.float16)
+        vision_tower = vision_tower.to(
+            # device="cuda",
+            # self.model.device,
+            device="cuda:0",
+            dtype=torch.float16,
+        )
+        # https://github.com/haotian-liu/LLaVA/blob/2f439b5b019e8e7fe8b8147f05d4c71a079d65e4/llava/serve/model_worker.py#L52-L59
         image_processor = vision_tower.image_processor
 
         raw_image = None
@@ -433,6 +439,9 @@ class Llava:
         print("---------------- input_ids")
         print(input_ids)
         print("----------------")
+
+        print("---------------- cuda device")
+        print("---------------- cuda device")
         # End of Process chat_history
         t0 = time.time()
         output_ids = self.model.generate(
@@ -507,7 +516,7 @@ class ModifiedInstillDeployable(InstillDeployable):
     def _update_num_gpus(self, num_gpus: float):
         if self._deployment.ray_actor_options is not None:
             self._deployment.ray_actor_options.update(
-                {"num_gpus": 4}
+                {"num_gpus": 3}
             )  # Test: Forcing GPU to be 4
 
 
