@@ -388,10 +388,12 @@ class Llava:
         vision_tower = self.model.get_vision_tower()
         if not vision_tower.is_loaded:
             vision_tower.load_model()
+
+        # vision_tower.to(device=device_map, dtype=torch.float16)
         vision_tower = vision_tower.to(
             # device="cuda",
-            # self.model.device,
-            device="cuda:0",
+            device=self.model.device,
+            # device="cuda:0",
             dtype=torch.float16,
         )
         # https://github.com/haotian-liu/LLaVA/blob/2f439b5b019e8e7fe8b8147f05d4c71a079d65e4/llava/serve/model_worker.py#L52-L59
@@ -405,7 +407,7 @@ class Llava:
 
         image_tensor = process_images(
             [raw_image], image_processor, {"image_aspect_ratio": "pad"}
-        ).to(self.model.device, dtype=torch.float16)
+        ).to(device=self.model.device, dtype=torch.float16)
         print(f"image_tensor.shape: {image_tensor.shape}")
 
         inp = DEFAULT_IMAGE_TOKEN + "\n" + task_visual_question_answering_input.prompt
@@ -434,6 +436,7 @@ class Llava:
             )
             .unsqueeze(0)
             .cuda()
+            .to(self.model.device)
         )
 
         print("---------------- input_ids")
@@ -441,6 +444,9 @@ class Llava:
         print("----------------")
 
         print("---------------- cuda device")
+        # ref: https://github.com/haotian-liu/LLaVA/blob/1a91fc274d7c35a9b50b3cb29c4247ae5837ce39/llava/serve/model_worker.py
+        for name, param in self.model.named_parameters():
+            print(f"{name} is on {param.device}")
         print("---------------- cuda device")
         # End of Process chat_history
         t0 = time.time()
