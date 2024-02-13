@@ -449,8 +449,8 @@ class Llava:
         # model.mm_projector.2.weight is on cuda:2
         # model.mm_projector.2.bias is on cuda:2
         # lm_head.weight is on cuda:2
-        self.model.mm_projector = self.model.mm_projector.to(device="cuda:0")
         self.model.lm_head = self.model.lm_head.to(device="cuda:0")
+        self.model.model.mm_projector = self.model.mm_projector.to(device="cuda:0")
 
         print("---------------- cuda device")
         # ref: https://github.com/haotian-liu/LLaVA/blob/1a91fc274d7c35a9b50b3cb29c4247ae5837ce39/llava/serve/model_worker.py
