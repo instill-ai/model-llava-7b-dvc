@@ -2,8 +2,8 @@
 import os
 
 # TORCH_GPU_DEVICE_ID = 0
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
-
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import io
 import time
@@ -443,22 +443,25 @@ class Llava:
         print(input_ids)
         print("----------------")
 
-        # TODO: move following param to device 0
-        # model.mm_projector.0.weight is on cuda:2
-        # model.mm_projector.0.bias is on cuda:2
-        # model.mm_projector.2.weight is on cuda:2
-        # model.mm_projector.2.bias is on cuda:2
-        # lm_head.weight is on cuda:2
-        self.model.lm_head = self.model.lm_head.to(device="cuda:0")
-        self.model.model.mm_projector = self.model.model.mm_projector.to(
-            device="cuda:0"
-        )
+        # # TODO: move following param to device 0
+        # # model.mm_projector.0.weight is on cuda:2
+        # # model.mm_projector.0.bias is on cuda:2
+        # # model.mm_projector.2.weight is on cuda:2
+        # # model.mm_projector.2.bias is on cuda:2
+        # # lm_head.weight is on cuda:2
+        # self.model.lm_head = self.model.lm_head.to(device="cuda:0")
+        # self.model.model.mm_projector = self.model.model.mm_projector.to(
+        #     device="cuda:0"
+        # )
+        # self.model.model.mm_projector = self.model.model.mm_projector.to(
+        #     device="cuda:0"
+        # )
 
-        print("---------------- cuda device")
-        # ref: https://github.com/haotian-liu/LLaVA/blob/1a91fc274d7c35a9b50b3cb29c4247ae5837ce39/llava/serve/model_worker.py
-        for name, param in self.model.named_parameters():
-            print(f"{name} is on {param.device}")
-        print("---------------- cuda device")
+        # print("---------------- cuda device")
+        # # ref: https://github.com/haotian-liu/LLaVA/blob/1a91fc274d7c35a9b50b3cb29c4247ae5837ce39/llava/serve/model_worker.py
+        # for name, param in self.model.named_parameters():
+        #     print(f"{name} is on {param.device}")
+        # print("---------------- cuda device")
         # End of Process chat_history
         t0 = time.time()
         output_ids = self.model.generate(
@@ -533,7 +536,7 @@ class ModifiedInstillDeployable(InstillDeployable):
     def _update_num_gpus(self, num_gpus: float):
         if self._deployment.ray_actor_options is not None:
             self._deployment.ray_actor_options.update(
-                {"num_gpus": 3}
+                {"num_gpus": 1}
             )  # Test: Forcing GPU to be 4
 
 
