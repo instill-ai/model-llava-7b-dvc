@@ -3,7 +3,7 @@ import os
 
 # TORCH_GPU_DEVICE_ID = 0
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
 import io
 import time
