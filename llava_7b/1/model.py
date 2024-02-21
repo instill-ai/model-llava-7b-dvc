@@ -3,7 +3,7 @@ import os
 
 # TORCH_GPU_DEVICE_ID = 0
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import io
 import time
@@ -536,11 +536,11 @@ class ModifiedInstillDeployable(InstillDeployable):
     def _update_num_gpus(self, num_gpus: float):
         if self._deployment.ray_actor_options is not None:
             self._deployment.ray_actor_options.update(
-                {"num_gpus": 2}
+                {"num_gpus": 1}
             )  # Test: Forcing GPU to be 4
 
     def _determine_vram_usage(self, model_path: str, total_vram: str):
-        return 2
+        return 1
 
 
 deployable = ModifiedInstillDeployable(
