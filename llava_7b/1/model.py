@@ -536,7 +536,7 @@ class ModifiedInstillDeployable(InstillDeployable):
     def _update_num_gpus(self, num_gpus: float):
         if self._deployment.ray_actor_options is not None:
             self._deployment.ray_actor_options.update(
-                {"num_gpus": 1}
+                {"num_gpus": 2}
             )  # Test: Forcing GPU to be 4
 
 
