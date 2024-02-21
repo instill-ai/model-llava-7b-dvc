@@ -539,6 +539,9 @@ class ModifiedInstillDeployable(InstillDeployable):
                 {"num_gpus": 2}
             )  # Test: Forcing GPU to be 4
 
+    def _determine_vram_usage(self, model_path: str, total_vram: str):
+        return 2
+
 
 deployable = ModifiedInstillDeployable(
     Llava, model_weight_or_folder_name="llava-v1.6-34b/", use_gpu=True
