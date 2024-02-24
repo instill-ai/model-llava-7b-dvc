@@ -67,10 +67,13 @@ class Llava:
         # print(f"[DEBUG] transformers version: {transformers.__version__}")
         # print(f"[DEBUG] torch version: {torch.__version__}")
 
+        # to test locally
+        # model_path = '/model-repository/users/04186ea4-829b-4ad9-8839-92e66f360068/llava-34b-gpu2-3/llava_7b/1/llava-v1.6-34b'
         self.model = LlavaLlamaForCausalLM.from_pretrained(
             model_path,
             low_cpu_mem_usage=True,
-            device_map="auto",  # "cpu"
+            # device_map="auto",  # "cpu"
+            device_map="cuda",
             # max_memory={0: "12GB", 1: "12GB", 2: "12GB", 3: "12GB"},
             # torch_dtype=torch.float16,
             load_in_8bit=True,
