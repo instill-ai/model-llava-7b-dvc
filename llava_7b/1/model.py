@@ -72,8 +72,9 @@ class Llava:
         self.model = LlavaLlamaForCausalLM.from_pretrained(
             model_path,
             low_cpu_mem_usage=True,
-            # device_map="auto",  # "cpu"
-            device_map="cuda",
+            # device_map="auto", # Complete Faield
+            # device_map="cuda", # Works init, but failed on inference: https://github.com/tloen/alpaca-lora/issues/14
+            device_map={"": "cpu"},  # test
             # max_memory={0: "12GB", 1: "12GB", 2: "12GB", 3: "12GB"},
             # torch_dtype=torch.float16,
             load_in_8bit=True,
